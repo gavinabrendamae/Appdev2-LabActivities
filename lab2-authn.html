@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lab 2 · Demo 1 — Authentication (AuthN)</title>
+<meta name="description" content="Interactive authentication demo: password hashing, lockout, optional 2-step verification and session tokens.">
+<style>
+:root{--bg:#fff;--surface:#fff;--ink:#222;--muted:#666;--line:#ccc;--brand:#2563a8;--brand-d:#1d4f87;--brand-l:#eef3f9;
+--ok:#1a7f37;--ok-bg:#e6f4ea;--bad:#c62828;--bad-bg:#fdecea;--warn:#8a5a00;--warn-bg:#fff6dd;--code-bg:#f4f4f4;--code-ink:#222;--blue:#2563a8}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.6 Arial,Helvetica,sans-serif;color:var(--ink);background:var(--bg)}
+a{color:var(--brand)}
+.wrap{max-width:900px;margin:0 auto;padding:0 16px}
+header.site{border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;padding-top:10px;padding-bottom:10px}
+header.site .brand{font-weight:bold;color:var(--ink);text-decoration:none}
+header.site nav a{margin-left:14px;text-decoration:none}
+header.site nav a.on{font-weight:bold;text-decoration:underline}
+.hero{padding:24px 0 8px}
+.hero h1{margin:4px 0;font-size:1.8rem}
+.hero p{margin:4px 0;color:var(--muted)}
+.eyebrow{font-size:.85rem;color:var(--muted)}
+main{padding:12px 0 30px}
+.card{border:1px solid var(--line);padding:14px 16px;margin:16px 0}
+.card h2{margin:0 0 8px;font-size:1.3rem}
+.card h3,h3{font-size:1.05rem;margin:16px 0 6px}
+h2{font-size:1.3rem}
+.grid{display:grid;gap:12px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+.tile{display:block;border:1px solid var(--line);padding:12px 14px;text-decoration:none;color:var(--ink)}
+.tile:hover{background:var(--brand-l)}
+.tile .tag{font-size:.8rem;color:var(--muted)}
+.tile h3{margin:4px 0;color:var(--brand)}.tile p{margin:0;color:var(--muted);font-size:.92rem}
+pre,code{font-family:Consolas,monospace;font-size:.9rem}
+code{background:var(--code-bg);padding:1px 4px}
+pre{background:var(--code-bg);color:var(--code-ink);border:1px solid var(--line);padding:10px 12px;overflow:auto;position:relative}
+pre code{background:none;padding:0}
+.copy{position:absolute;top:6px;right:6px;font-size:.75rem;padding:2px 8px;border:1px solid var(--line);background:#fff;cursor:pointer}
+.note,.warn,.tip{border-left:4px solid var(--brand);background:var(--brand-l);padding:8px 12px;margin:12px 0}
+.warn{border-color:var(--warn);background:var(--warn-bg)}
+.tip{border-color:var(--ok);background:var(--ok-bg)}
+.note b,.warn b,.tip b{display:block}
+.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+.steps>li{counter-increment:s;margin:18px 0;padding-left:0}
+.steps>li::before{content:"Step " counter(s) ".";font-weight:bold;color:var(--brand);display:block}
+.steps h3{display:inline;margin:0}
+table{border-collapse:collapse;width:100%;margin:8px 0}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:#f2f2f2}
+.tablewrap{overflow-x:auto}
+.toc{padding-left:20px}
+.diagram{max-width:100%;height:auto}
+label{display:block;font-weight:bold;margin:10px 0 4px;font-size:.92rem}
+input,select,button.btn{font:inherit}
+input[type=text],input[type=email],input[type=password],select{width:100%;padding:7px 9px;border:1px solid #888;background:#fff;color:var(--ink)}
+.btn{display:inline-block;padding:7px 14px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--brand-d)}.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--brand)}.btn.ghost:hover{background:var(--brand-l)}
+.badge{display:inline-block;padding:1px 8px;border:1px solid var(--line);font-size:.85rem}
+.badge.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
+.badge.bad{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+.badge.warn{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}
+.flow{list-style:none;margin:0;padding:0}
+.flow li{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #eee;color:var(--muted)}
+.flow li .ic{flex:none;width:24px;height:24px;border:1px solid var(--line);text-align:center;line-height:22px;font-size:.85rem}
+.flow li.run{color:var(--ink)}.flow li.run .ic{border-color:var(--brand);color:var(--brand)}
+.flow li.pass{color:var(--ink)}.flow li.pass .ic{background:var(--ok);border-color:var(--ok);color:#fff}
+.flow li.fail{color:var(--bad)}.flow li.fail .ic{background:var(--bad);border-color:var(--bad);color:#fff}
+.log{background:var(--code-bg);border:1px solid var(--line);padding:8px 10px;font:.85rem/1.5 Consolas,monospace;max-height:280px;overflow:auto}
+.log .l{display:block;border-bottom:1px solid #e4e4e4;padding:2px 0}
+.log .l.ok b{color:var(--ok)}.log .l.bad b{color:var(--bad)}.log .l.w b{color:var(--warn)}
+.perm{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.perm button{text-align:left;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 10px;cursor:pointer;font:inherit}
+.perm button:hover{border-color:var(--brand)}
+.perm button small{display:block;color:var(--muted)}
+.perm button.allow{border-color:var(--ok);background:var(--ok-bg)}
+.perm button.deny{border-color:var(--bad);background:var(--bad-bg)}
+.who{display:flex;flex-wrap:wrap;gap:6px}
+.who .chip{border:1px solid var(--line);background:#fff;color:var(--ink);padding:5px 12px;cursor:pointer;font:inherit}
+.who .chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.matrix td.y{background:var(--ok-bg);color:var(--ok);text-align:center}
+.matrix td.n{background:var(--bad-bg);color:var(--bad);text-align:center}
+.matrix th:not(:first-child){text-align:center}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.g2,.g3,.vs{grid-template-columns:1fr}}
+footer.site{border-top:1px solid var(--line);padding:12px 0;color:var(--muted);font-size:.88rem}
+.sr{position:absolute;left:-9999px}
+.toc{display:flex;flex-wrap:wrap;gap:4px 14px;padding:0;margin:14px 0}
+
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <a class="brand" href="index.html">Appdev2  · Lab Activities</a>
+  <nav><a href="index.html">Home</a><a href="lab1-database-connection.html">Lab 1</a><a class="on" href="lab2-comparison.html">Lab 2</a></nav>
+</div></header>
+
+<section class="hero"><div class="wrap">
+  <div class="eyebrow">Lab 2 · Demo 1 of 2</div>
+  <h1>Authentication — “Who are you?”</h1>
+  <p>Log in with one of the demo accounts. Watch the system verify your identity step by step, then issue a session token.</p>
+</div></section>
+
+<main><div class="wrap">
+<div class="grid g2" style="align-items:start">
+
+  <div>
+    <div class="card" id="loginCard">
+      <h2>Sign in</h2>
+      <form id="f" autocomplete="off" novalidate>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@careconnect.test" required>
+        <label for="pw">Password</label>
+        <input id="pw" type="password" placeholder="••••••••" required>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:500;margin-top:14px"><input id="mfa" type="checkbox" style="width:auto"> Require 2-step verification (one-time code)</label>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn" id="go" type="submit">Sign in</button>
+          <span id="status" class="badge warn" hidden></span>
+        </div>
+      </form>
+      <div id="otpBox" hidden style="margin-top:16px">
+        <div class="note"><b>📱 SMS to your phone (simulated)</b>Your one-time code is <b id="otpShow" style="display:inline;font-size:1.2rem;letter-spacing:3px"></b></div>
+        <label for="otp">Enter the 6-digit code</label>
+        <input id="otp" type="text" inputmode="numeric" maxlength="6" placeholder="123456">
+        <button class="btn" id="otpGo" type="button" style="margin-top:10px">Verify code</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Demo accounts</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Email</th><th>Password</th></tr>
+        <tr><td>brenda@careconnect.test</td><td>Admin#2026</td></tr>
+        <tr><td>gemalyn@careconnect.test</td><td>Bhw#2026</td></tr>
+        <tr><td>joan@careconnect.test</td><td>Resident#2026</td></tr>
+      </table></div>
+      <p style="color:var(--muted);font-size:.9rem;margin:6px 0 0">Try a wrong password three times to see the lockout.</p>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>What the system does</h2>
+      <ul class="flow" id="flow">
+        <li data-s="1"><span class="ic">1</span><span><b>Receive credentials</b><br><small>email + password sent to the server</small></span></li>
+        <li data-s="2"><span class="ic">2</span><span><b>Find the account</b><br><small>look up the user by email</small></span></li>
+        <li data-s="3"><span class="ic">3</span><span><b>Hash the password</b><br><small>SHA-256(salt + password) — the plain password is never stored</small></span></li>
+        <li data-s="4"><span class="ic">4</span><span><b>Compare hashes</b><br><small>entered hash must equal the stored hash</small></span></li>
+        <li data-s="5"><span class="ic">5</span><span><b>2-step verification</b><br><small>only when the box is ticked</small></span></li>
+        <li data-s="6"><span class="ic">6</span><span><b>Issue session token</b><br><small>random token with an expiry time</small></span></li>
+      </ul>
+      <div id="hashView" class="log" style="margin-top:12px" hidden></div>
+    </div>
+
+    <div class="card" id="sessCard">
+      <h2>Session</h2>
+      <div id="sessNone"><span class="badge bad">Not authenticated</span> <span style="color:var(--muted)">— no token yet.</span></div>
+      <div id="sessYes" hidden>
+        <p style="margin:0 0 6px"><span class="badge ok">Authenticated</span> as <b id="sName"></b> <span class="badge warn" id="sRole"></span></p>
+        <div class="log" id="sTok"></div>
+        <p style="margin:8px 0 0;color:var(--muted);font-size:.9rem">Token expires in <b id="sLeft"></b></p>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn ghost" id="out" type="button">Log out</button>
+          <a class="btn" href="lab2-authz.html" style="text-decoration:none">Next: Authorization demo →</a>
+        </div>
+      </div>
+      <h3>Protected resource</h3>
+      <p style="margin:0 0 8px;color:var(--muted);font-size:.92rem">Ask the server for <code>GET /api/my-profile</code>. It only needs to know <em>who</em> you are.</p>
+      <button class="btn ghost" id="callApi" type="button">Request /api/my-profile</button>
+      <div class="log" id="apiLog" style="margin-top:10px" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>What this demonstrates</h2>
+  <ul>
+    <li><b>Identity claim + proof</b> — the email says who you claim to be; the password is the proof.</li>
+    <li><b>Hashing</b> — the server keeps only a salted hash, so a leaked database does not reveal passwords.</li>
+    <li><b>Generic error message</b> — “Invalid email or password” never tells an attacker whether the email exists.</li>
+    <li><b>Brute-force protection</b> — repeated failures lock the account temporarily.</li>
+    <li><b>Multi-factor</b> — password (something you know) + code on your phone (something you have).</li>
+    <li><b>Session token</b> — after proof, requests carry a token instead of the password. No token → <span class="badge bad">401 Unauthorized</span>.</li>
+  </ul>
+</div>
+</div></main>
+<footer class="site"><div class="wrap">Lab 2 · Authentication demo — a learning simulation, not production security.</div></footer>
+
+<script>
+// Demo "database" for Lab 2. Passwords are NEVER stored — only salt + SHA-256 hash.
+// (Real systems use a slow hash such as bcrypt/argon2 on the server; SHA-256 is used here so it runs in the browser.)
+window.DEMO_USERS=[
+  {email:"brenda@careconnect.test",name:"Brenda Gavina",role:"admin",roleLabel:"Midwife / Admin",salt:"s1a9f3",hash:"d486c63835134db88321bf71d1cf8d18090f8e8ebb9e284487edbbef8da72487"},
+  {email:"maria@careconnect.test",name:"Maria Reyes",role:"bhw",roleLabel:"Barangay Health Worker",salt:"b4e6a1",hash:"1a86cdbf728ba9061c8797884364159fd0333ba96f35622310f733d0424faae0"},
+  {email:"juan@careconnect.test",name:"Juan Dela Cruz",role:"resident",roleLabel:"Resident",salt:"r9d5f0",hash:"ca0f8af0497b955e3157bc85bce3027460458c26307406b111166396d06d4c3f"},
+];
+
+</script>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var SESSION_KEY='lab_session', MAX_TRIES=3, LOCK_MS=30000, TOKEN_MS=15*60*1000;
+  var fails=0, lockUntil=0, pending=null, otpCode=null, otpTries=0;
+
+  function sha256(text){
+    return crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)).then(function(buf){
+      return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+    });
+  }
+  function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+  function setStep(n,state){
+    var li=document.querySelector('#flow li[data-s="'+n+'"]');li.className=state;
+    li.querySelector('.ic').textContent = state==='pass'?'✓':state==='fail'?'✕':n;
+  }
+  function resetFlow(){document.querySelectorAll('#flow li').forEach(function(li){li.className='';li.querySelector('.ic').textContent=li.dataset.s});$('hashView').hidden=true}
+  function say(msg,kind){var s=$('status');s.hidden=!msg;s.textContent=msg||'';s.className='badge '+(kind||'warn')}
+  function randHex(n){var a=new Uint8Array(n);crypto.getRandomValues(a);return Array.from(a).map(function(b){return b.toString(16).padStart(2,'0')}).join('')}
+
+  function getSession(){
+    try{var s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');if(s&&s.exp>Date.now())return s}catch(e){}
+    return null;
+  }
+  function renderSession(){
+    var s=getSession();
+    $('sessNone').hidden=!!s;$('sessYes').hidden=!s;
+    if(s){
+      $('sName').textContent=s.name;$('sRole').textContent=s.roleLabel;
+      $('sTok').innerHTML='<span class="l">token : '+s.token+'</span><span class="l">user  : '+s.email+'</span><span class="l">issued: '+new Date(s.iat).toLocaleTimeString()+'</span><span class="l">expiry: '+new Date(s.exp).toLocaleTimeString()+'</span>';
+    }
+  }
+  setInterval(function(){
+    var s=getSession();
+    if(s){var m=Math.max(0,s.exp-Date.now());$('sLeft').textContent=Math.floor(m/60000)+' min '+String(Math.floor(m/1000)%60).padStart(2,'0')+' s'}
+    else if($('sessYes').hidden===false){renderSession()}
+    if(lockUntil>Date.now()){say('Locked — try again in '+Math.ceil((lockUntil-Date.now())/1000)+' s','bad')}
+    else if(lockUntil){lockUntil=0;fails=0;$('go').disabled=false;say('')}
+  },500);
+
+  function issueToken(u){
+    var now=Date.now();
+    var s={token:randHex(16),email:u.email,name:u.name,role:u.role,roleLabel:u.roleLabel,iat:now,exp:now+TOKEN_MS};
+    try{sessionStorage.setItem(SESSION_KEY,JSON.stringify(s))}catch(e){}
+    renderSession();
+  }
+
+  function fail(step,msg){
+    setStep(step,'fail');say(msg,'bad');
+    fails++;
+    if(fails>=MAX_TRIES){lockUntil=Date.now()+LOCK_MS;$('go').disabled=true;say('Too many attempts — account locked for 30 s','bad')}
+    $('go').textContent='Sign in';
+  }
+
+  $('f').addEventListener('submit',async function(e){
+    e.preventDefault();
+    if(lockUntil>Date.now())return;
+    resetFlow();$('otpBox').hidden=true;pending=null;say('');
+    var email=$('email').value.trim().toLowerCase(), pw=$('pw').value;
+    if(!email||!pw){say('Enter your email and password','warn');return}
+    $('go').disabled=true;$('go').textContent='Checking…';
+    setStep(1,'run');await sleep(350);setStep(1,'pass');
+    setStep(2,'run');await sleep(350);
+    var u=window.DEMO_USERS.find(function(x){return x.email===email});
+    if(!u){$('go').disabled=false;fail(2,'Invalid email or password');return}
+    setStep(2,'pass');
+    setStep(3,'run');await sleep(350);
+    var h=await sha256(u.salt+pw);
+    setStep(3,'pass');
+    var hv=$('hashView');hv.hidden=false;
+    hv.innerHTML='<span class="l">salt   : '+u.salt+'</span><span class="l">entered: '+h.slice(0,32)+'…</span><span class="l">stored : '+u.hash.slice(0,32)+'…</span>';
+    setStep(4,'run');await sleep(450);
+    $('go').disabled=false;
+    if(h!==u.hash){fail(4,'Invalid email or password');return}
+    setStep(4,'pass');
+    if($('mfa').checked){
+      setStep(5,'run');pending=u;otpCode=String(Math.floor(100000+Math.random()*900000));otpTries=0;
+      $('otpShow').textContent=otpCode;$('otpBox').hidden=false;$('otp').value='';$('otp').focus();
+      $('go').textContent='Sign in';say('Waiting for one-time code','warn');return;
+    }
+    setStep(5,'pass');document.querySelector('#flow li[data-s="5"] small').textContent='skipped — not required';
+    setStep(6,'run');await sleep(350);issueToken(u);setStep(6,'pass');
+    fails=0;$('go').textContent='Sign in';say('Welcome, '+u.name+'!','ok');$('pw').value='';
+  });
+
+  $('otpGo').addEventListener('click',async function(){
+    if(!pending)return;
+    if($('otp').value.trim()===otpCode){
+      setStep(5,'pass');document.querySelector('#flow li[data-s="5"] small').textContent='code verified';
+      setStep(6,'run');await sleep(350);issueToken(pending);setStep(6,'pass');
+      $('otpBox').hidden=true;fails=0;say('Welcome, '+pending.name+'!','ok');pending=null;$('pw').value='';
+    }else{
+      otpTries++;
+      if(otpTries>=3){setStep(5,'fail');$('otpBox').hidden=true;pending=null;say('Wrong code 3 times — start again','bad')}
+      else say('Wrong code ('+otpTries+'/3)','bad');
+    }
+  });
+
+  $('out').addEventListener('click',function(){
+    try{sessionStorage.removeItem(SESSION_KEY)}catch(e){}
+    renderSession();resetFlow();say('Logged out','warn');$('apiLog').hidden=true;
+  });
+
+  $('callApi').addEventListener('click',function(){
+    var s=getSession(), log=$('apiLog');log.hidden=false;
+    var t=new Date().toLocaleTimeString();
+    log.innerHTML= s
+      ? '<span class="l ok">['+t+'] <b>200 OK</b> GET /api/my-profile → {"name":"'+s.name+'","email":"'+s.email+'"}</span><span class="l">Token accepted: the server now knows who is asking.</span>'
+      : '<span class="l bad">['+t+'] <b>401 Unauthorized</b> GET /api/my-profile</span><span class="l">No valid token: the server cannot tell who you are. Log in first.</span>';
+  });
+
+  renderSession();
+})();
+</script>
+</body>
+</html>
