@@ -190,7 +190,6 @@ create table public.patients (
   purok       text
 );
 
--- turn Row Level Security ON and add rules
 alter table public.patients enable row level security;
 
 create policy patients_select on public.patients for select
@@ -267,7 +266,7 @@ supabase.channel('queue-live')
 </div>
 
 <div class="card" id="trouble">
-  <h2>Troubleshooting — errors I actually met</h2>
+  <h2>Troubleshooting — errors we actually met</h2>
   <div class="tablewrap"><table>
     <tr><th>Error / symptom</th><th>Cause</th><th>Fix</th></tr>
     <tr><td><code>TypeError: Failed to fetch</code> or "Invalid API key"</td><td>Wrong URL / key, or <code>.env</code> not loaded</td><td>Check the names start with <code>VITE_</code>, re-copy the values, restart <code>npm run dev</code></td></tr>
